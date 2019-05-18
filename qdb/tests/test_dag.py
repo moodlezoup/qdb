@@ -10,5 +10,4 @@ class TestDAG(TestCase):
         pq = Program([H(0), CNOT(0, 1), CNOT(1, 2)])
         ro = pq.declare("ro", "BIT", 1)
         pq.measure(0, ro)
-        pq.if_then(ro, Program(X(0)), Program(X(1)))
-        self.assertTrue(qdb.foo(pq))
+        pq.if_then(ro, X(0), X(1))
