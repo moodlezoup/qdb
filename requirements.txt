@@ -1,0 +1,6 @@
+# runtime deps
+pyquil
+
+# dev deps
+pytest
+black
