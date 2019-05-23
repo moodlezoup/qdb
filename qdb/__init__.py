@@ -1,5 +1,14 @@
 from pyquil import Program
 from pyquil.quilbase import Gate, Nop
+from pyquil.operator_estimation import (
+    TomographyExperiment,
+    group_experiments,
+    measure_observables,
+    ExperimentSetting,
+    zeros_state,
+)
+from pyquil.paulis import sX, sY, sZ
+from pyquil.api import QuantumComputer
 
 
 class Breakpoint(Nop):
@@ -8,6 +17,7 @@ class Breakpoint(Nop):
         self.qubits = qubits
 
 
+# TODO: Move to another file
 def trim_to_breakpoint(pq: Program) -> Program:
     """
     Removes all qubits and instructions that the breakpoint does not depend on.
@@ -36,3 +46,32 @@ def trim_to_breakpoint(pq: Program) -> Program:
         ]
     )
     return trimmed_pq
+
+
+# TODO: It would be nice if this returned a Wavefunction, but maybe that isn't possible
+# def debug(qc: QuantumComputer, pq: Program) -> Wavefunction:
+def debug(qc: QuantumComputer, pq: Program):
+    trimmed_pq = trim_to_breakpoint(pq)
+
+    qubits = list(trimmed_pq.get_qubits())
+
+    # TODO: We need to figure out how to use these correctly.
+    settings = [
+        ExperimentSetting(zeros_state(qubits), gate(qubit))
+        for qubit in qubits
+        for gate in [sX, sY, sZ]
+    ]
+    suite = TomographyExperiment(settings, trimmed_pq, qubits)
+    results = measure_observables(qc, group_experiments(suite))
+
+    # TODO: Compute wavefunction amplitudes from measurments
+    # for result in results:
+    #     results.setting # type ExperimentSetting
+    #     results.expectation
+    # amplitudes = np.zeros(2**len(qubits))
+    # for i in range(len(amplitudes)):
+    #     amplitudes[i] = ???
+    #
+    # return Wavefunction(amplitudes)
+
+    return results

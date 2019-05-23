@@ -1,10 +1,22 @@
 from unittest import TestCase
+import pytest
 
-from pyquil import Program
-from pyquil.gates import X, Y, Z, H, CZ, CNOT, SWAP
 import qdb
+from pyquil import Program, get_qc
+from pyquil.gates import X, Y, Z, H, CZ, CNOT, SWAP
+import numpy as np
 
 # Test programs with no control flow
 class TestLinear(TestCase):
-    def test_foo(self):
-        pq = Program([H(0), CNOT(0, 1), CNOT(1, 2), qdb.Breakpoint([0, 1, 2])])
+    @pytest.mark.skip("qdb.debug does not return a Wavefunction")
+    def test_simple(self):
+        qc = get_qc("3q", as_qvm=True)
+
+        # |0, 0, 0>  -->  |+, 0, 1>
+        pq = Program([H(0), X(1), SWAP(1, 2), qdb.Breakpoint([0, 1, 2])])
+        true_amplitudes = np.array([0, 1, 0, 0, 0, 1, 0, 0]) / np.sqrt(2)
+
+        wf = qdb.debug(qc, pq)
+
+        amplitudes = np.array([wf[i] for i in range(2 ** len(wf))])
+        assert np.allclose(true_amplitudes, amplitudes)
