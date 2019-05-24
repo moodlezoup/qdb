@@ -13,10 +13,10 @@ class TestLinear(TestCase):
         qc = get_qc("3q", as_qvm=True)
 
         # |0, 0, 0>  -->  |+, 0, 1>
-        pq = Program([H(0), X(1), SWAP(1, 2), qdb.Breakpoint([0, 1, 2])])
+        pq = Program([H(0), X(1), SWAP(1, 2)])
         true_amplitudes = np.array([0, 1, 0, 0, 0, 1, 0, 0]) / np.sqrt(2)
 
-        wf = qdb.debug(qc, pq)
+        wf = qdb.Qdb(qc, pq).do_tomography()
 
         amplitudes = np.array([wf[i] for i in range(2 ** len(wf))])
         assert np.allclose(true_amplitudes, amplitudes)

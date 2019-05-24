@@ -18,8 +18,7 @@ class TestLinear(TestCase):
         ro = pq.declare("ro", "BIT", 1)
         pq.measure(0, ro)
         pq.if_then(ro, X(1), X(2))
-        pq += Program(qdb.Breakpoint([0, 1, 2]))
 
-        wf = qdb.debug(qc, pq)
+        wf = qdb.Qdb(qc, pq).do_tomography()
         # TODO: What should the wavefunction look like?
         assert False

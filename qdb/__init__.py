@@ -18,8 +18,8 @@ from typing import Any, Iterable, List, Set
 class Qdb(pdb.Pdb):
     def __init__(
         self,
-        program: Program,
         qc: QuantumComputer,
+        program: Program,
         completekey: str = "tab",
         stdin: Any = None,
         stdout: Any = None,
@@ -36,8 +36,8 @@ class Qdb(pdb.Pdb):
             nosigint=nosigint,
             readrc=readrc,
         )
-        self.program = program
         self.qc = qc
+        self.program = program
 
     def all_qubits(self):
         """
@@ -51,6 +51,11 @@ class Qdb(pdb.Pdb):
         return qubits
 
     def entanglement_set(self, qubits: Iterable[int]) -> Set[int]:
+        """
+        Returns a conservative overestimate of the set of qubits entangled with
+        one or more of those provided, based entirely on which multi-qubit gates
+        have been performed so far.
+        """
         entangled_qubits = set(qubits)
         entangled_prev = set()
         while len(entangled_qubits) != len(entangled_prev):
@@ -112,8 +117,8 @@ class Qdb(pdb.Pdb):
     do_tom = do_tomography
 
 
-def set_trace(program: Program, qc: QuantumComputer, header=None):
-    qdb = Qdb(program, qc)
+def set_trace(qc: QuantumComputer, program: Program, header=None):
+    qdb = Qdb(qc, program)
     if header is not None:
         qdb.message(header)
     qdb.set_trace(sys._getframe().f_back)
