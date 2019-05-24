@@ -10,6 +10,7 @@ from pyquil.operator_estimation import (
 )
 from pyquil.paulis import sX, sY, sZ
 from pyquil.api import QuantumComputer
+import sys
 import typing
 from typing import Any, Iterable, List, Set
 
@@ -109,3 +110,10 @@ class Qdb(pdb.Pdb):
         # return Wavefunction(amplitudes)
 
     do_tom = do_tomography
+
+
+def set_trace(program: Program, qc: QuantumComputer, header=None):
+    qdb = Qdb(program, qc)
+    if header is not None:
+        qdb.message(header)
+    qdb.set_trace(sys._getframe().f_back)

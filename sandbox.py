@@ -6,7 +6,7 @@ from pyquil.api import QVMConnection
 
 pq = Program()
 qc = get_qc("3q-qvm")
-qdb.Qdb(pq, qc).set_trace()
+qdb.set_trace(pq, qc)
 pq += H(0)
 pq += X(1)
 pq += SWAP(1, 2)
