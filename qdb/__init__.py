@@ -1,15 +1,10 @@
+from forest.benchmarking.tomography import *
 import pdb
 from pyquil import Program
-from pyquil.quilbase import Gate, Nop
-from pyquil.operator_estimation import (
-    TomographyExperiment,
-    group_experiments,
-    measure_observables,
-    ExperimentSetting,
-    zeros_state,
-)
-from pyquil.paulis import sX, sY, sZ
 from pyquil.api import QuantumComputer
+from pyquil.operator_estimation import measure_observables
+from pyquil.paulis import sX, sY, sZ
+from pyquil.quilbase import Gate, Nop
 import sys
 import typing
 from typing import Any, Iterable, List, Set
@@ -38,6 +33,7 @@ class Qdb(pdb.Pdb):
         )
         self.qc = qc
         self.program = program
+        self.prompt = "(Qdb) "
 
     def all_qubits(self):
         """
@@ -50,7 +46,7 @@ class Qdb(pdb.Pdb):
                 qubits |= set(gate.get_qubits())
         return qubits
 
-    def entanglement_set(self, qubits: Iterable[int]) -> Set[int]:
+    def entanglement_set(self, qubits: List[int]) -> Set[int]:
         """
         Returns a conservative overestimate of the set of qubits entangled with
         one or more of those provided, based entirely on which multi-qubit gates
@@ -58,6 +54,7 @@ class Qdb(pdb.Pdb):
         """
         entangled_qubits = set(qubits)
         entangled_prev = set()
+        # TODO: Is this loop necessary?
         while len(entangled_qubits) != len(entangled_prev):
             entangled_prev = entangled_qubits
             for gate in self.program:
@@ -69,6 +66,19 @@ class Qdb(pdb.Pdb):
                     if entangled_qubits & gate_qubits:
                         entangled_qubits |= gate_qubits
         return entangled_qubits
+
+    def do_entanglement(self, arg: List[int]) -> None:
+        """
+        CLI wrapper for entanglement_set
+        """
+        try:
+            qubits = [int(x) for x in arg.split()]
+        except ValueError:
+            self.message("Qubit indices must be specified as a space-separated list")
+            return
+        self.message("Entanglement set: {}".format(self.entanglement_set(qubits)))
+
+    do_ent = do_entanglement
 
     def do_tomography(self, arg: List[int]) -> None:
         """tom(ography) [qubit_index [qubit_index...]]
@@ -93,28 +103,30 @@ class Qdb(pdb.Pdb):
                     "Qubit indices must be specified as a space-separated list"
                 )
                 return
-        self.message("Entanglement set: {}".format(self.entanglement_set(qubits)))
 
-        # TODO: We need to figure out how to use these correctly.
-        # settings = [
-        #     ExperimentSetting(zeros_state(qubits), gate(qubit))
-        #     for qubit in qubits
-        #     for gate in [sX, sY, sZ]
-        # ]
-        # suite = TomographyExperiment(settings, trimmed_pq, qubits)
-        # results = measure_observables(qc, group_experiments(suite))
-        #
-        # TODO: Compute wavefunction amplitudes from measurments
-        # for result in results:
-        #     results.setting # type ExperimentSetting
-        #     results.expectation
-        # amplitudes = np.zeros(2**len(qubits))
-        # for i in range(len(amplitudes)):
-        #     amplitudes[i] = ???
-        #
-        # return Wavefunction(amplitudes)
+        experiment = generate_state_tomography_experiment(
+            self.trim_program(qubits), qubits
+        )
+        # TODO: Let user specify n_shots (+ other params)
+        results = list(
+            measure_observables(qc=self.qc, tomo_experiment=experiment, n_shots=1000)
+        )
+        # TODO: Let user specify algorithm
+        rho_est = linear_inv_state_estimate(results, qubits)
+        self.message(np.round(rho_est, 4))
+        self.message("Purity: {}".format(np.trace(np.matmul(rho_est, rho_est))))
 
     do_tom = do_tomography
+
+    def trim_program(self, qubits: List[int]) -> Program:
+        entangled_qubits = self.entanglement_set(qubits)
+        trimmed_program = Program()
+        for gate in self.program:
+            if isinstance(gate, Gate):
+                gate_qubits = set(gate.get_qubits())
+                if entangled_qubits & gate_qubits:
+                    trimmed_program += gate
+        return trimmed_program
 
 
 def set_trace(qc: QuantumComputer, program: Program, header=None):

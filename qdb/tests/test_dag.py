@@ -10,7 +10,7 @@ import numpy as np
 class TestLinear(TestCase):
     @pytest.mark.skip("Not implemented")
     def test_simple(self):
-        qc = get_qc("3q", as_qvm=True)
+        qc = get_qc("3q-qvm")
 
         # TODO: How should we handle this case?
         # |0, 0, 0>  -->  |?, ?, ?>

@@ -10,7 +10,7 @@ import numpy as np
 class TestLinear(TestCase):
     @pytest.mark.skip("qdb.debug does not return a Wavefunction")
     def test_simple(self):
-        qc = get_qc("3q", as_qvm=True)
+        qc = get_qc("3q-qvm")
 
         # |0, 0, 0>  -->  |+, 0, 1>
         pq = Program([H(0), X(1), SWAP(1, 2)])
