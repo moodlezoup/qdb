@@ -1,3 +1,4 @@
+import pdb
 from pyquil import Program
 from pyquil.quilbase import Gate, Nop
 from pyquil.operator_estimation import (
@@ -9,69 +10,102 @@ from pyquil.operator_estimation import (
 )
 from pyquil.paulis import sX, sY, sZ
 from pyquil.api import QuantumComputer
+import typing
+from typing import Any, Iterable, List, Set
 
 
-class Breakpoint(Nop):
-    def __init__(self, qubits):
-        Nop.__init__(self)
-        self.qubits = qubits
+class Qdb(pdb.Pdb):
+    def __init__(
+        self,
+        program: Program,
+        qc: QuantumComputer,
+        completekey: str = "tab",
+        stdin: Any = None,
+        stdout: Any = None,
+        skip: Any = None,
+        nosigint: bool = False,
+        readrc: bool = True,
+    ) -> None:
+        pdb.Pdb.__init__(
+            self,
+            completekey=completekey,
+            stdin=stdin,
+            stdout=stdout,
+            skip=skip,
+            nosigint=nosigint,
+            readrc=readrc,
+        )
+        self.program = program
+        self.qc = qc
 
-
-# TODO: Move to another file
-def trim_to_breakpoint(pq: Program) -> Program:
-    """
-    Removes all qubits and instructions that the breakpoint does not depend on.
-    """
-    breakpoints = [gate for gate in pq if isinstance(gate, Breakpoint)]
-    if len(breakpoints) != 1:
-        raise ValueError("Program must have exactly one breakpoint")
-    entangled_qubits = set(breakpoints[0].qubits)
-    entangled_prev = set()
-    while len(entangled_qubits) != len(entangled_prev):
-        entangled_prev = entangled_qubits
-        for gate in pq:
-            # FIXME: Also check qubit measurements that affect control flow
+    def all_qubits(self):
+        """
+        Helper function to get all qubit indices that have been acted on by
+        gates in the program so far.
+        """
+        qubits = set()
+        for gate in self.program:
             if isinstance(gate, Gate):
-                gate_qubits = set(gate.get_qubits())
-                # Here, two qubits are entangled if they share an operator
-                # TODO: Is this a resonable definition?
-                if entangled_qubits & gate_qubits:
-                    entangled_qubits |= gate_qubits
-    # TODO: Remove jump statements that do nothing
-    trimmed_pq = Program(
-        [
-            gate
-            for gate in pq
-            if not isinstance(gate, Gate) or entangled_qubits & set(gate.get_qubits())
-        ]
-    )
-    return trimmed_pq
+                qubits |= set(gate.get_qubits())
+        return qubits
 
+    def entanglement_set(self, qubits: Iterable[int]) -> Set[int]:
+        entangled_qubits = set(qubits)
+        entangled_prev = set()
+        while len(entangled_qubits) != len(entangled_prev):
+            entangled_prev = entangled_qubits
+            for gate in self.program:
+                # FIXME: Also check qubit measurements that affect control flow
+                if isinstance(gate, Gate):
+                    gate_qubits = set(gate.get_qubits())
+                    # Here, two qubits are entangled if they share an operator
+                    # TODO: Is this a resonable definition?
+                    if entangled_qubits & gate_qubits:
+                        entangled_qubits |= gate_qubits
+        return entangled_qubits
 
-# TODO: It would be nice if this returned a Wavefunction, but maybe that isn't possible
-# def debug(qc: QuantumComputer, pq: Program) -> Wavefunction:
-def debug(qc: QuantumComputer, pq: Program):
-    trimmed_pq = trim_to_breakpoint(pq)
+    def do_tomography(self, arg: List[int]) -> None:
+        """tom(ography) [qubit_index [qubit_index...]]
+        Runs state tomography on the qubits specified by the space-separated
+        list of qubit indices. Without argument, run on all qubits in Program
+        so far (but first ask confirmation).
+        """
+        qubits = []
+        if not arg:
+            try:
+                reply = input("Run on all qubits? ")
+            except EOFError:
+                reply = "no"
+            reply = reply.strip().lower()
+            if reply in ("y", "yes"):
+                qubits = self.all_qubits()
+        else:
+            try:
+                qubits = [int(x) for x in arg.split()]
+            except ValueError:
+                self.message(
+                    "Qubit indices must be specified as a space-separated list"
+                )
+                return
+        self.message("Entanglement set: {}".format(self.entanglement_set(qubits)))
 
-    qubits = list(trimmed_pq.get_qubits())
+        # TODO: We need to figure out how to use these correctly.
+        # settings = [
+        #     ExperimentSetting(zeros_state(qubits), gate(qubit))
+        #     for qubit in qubits
+        #     for gate in [sX, sY, sZ]
+        # ]
+        # suite = TomographyExperiment(settings, trimmed_pq, qubits)
+        # results = measure_observables(qc, group_experiments(suite))
+        #
+        # TODO: Compute wavefunction amplitudes from measurments
+        # for result in results:
+        #     results.setting # type ExperimentSetting
+        #     results.expectation
+        # amplitudes = np.zeros(2**len(qubits))
+        # for i in range(len(amplitudes)):
+        #     amplitudes[i] = ???
+        #
+        # return Wavefunction(amplitudes)
 
-    # TODO: We need to figure out how to use these correctly.
-    settings = [
-        ExperimentSetting(zeros_state(qubits), gate(qubit))
-        for qubit in qubits
-        for gate in [sX, sY, sZ]
-    ]
-    suite = TomographyExperiment(settings, trimmed_pq, qubits)
-    results = measure_observables(qc, group_experiments(suite))
-
-    # TODO: Compute wavefunction amplitudes from measurments
-    # for result in results:
-    #     results.setting # type ExperimentSetting
-    #     results.expectation
-    # amplitudes = np.zeros(2**len(qubits))
-    # for i in range(len(amplitudes)):
-    #     amplitudes[i] = ???
-    #
-    # return Wavefunction(amplitudes)
-
-    return results
+    do_tom = do_tomography
