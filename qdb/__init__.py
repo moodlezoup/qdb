@@ -1,13 +1,14 @@
-from forest.benchmarking.tomography import *
 import pdb
+import sys
+import typing
+from typing import Any, Iterable, List, Set
+
+from forest.benchmarking.tomography import *
 from pyquil import Program
 from pyquil.api import QuantumComputer
 from pyquil.operator_estimation import measure_observables
 from pyquil.paulis import sX, sY, sZ
 from pyquil.quilbase import Gate, Nop
-import sys
-import typing
-from typing import Any, Iterable, List, Set
 
 
 class Qdb(pdb.Pdb):
@@ -115,6 +116,7 @@ class Qdb(pdb.Pdb):
         rho_est = linear_inv_state_estimate(results, qubits)
         self.message(np.round(rho_est, 4))
         self.message("Purity: {}".format(np.trace(np.matmul(rho_est, rho_est))))
+        return rho_est
 
     do_tom = do_tomography
 
