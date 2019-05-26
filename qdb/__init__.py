@@ -55,7 +55,6 @@ class Qdb(pdb.Pdb):
         """
         entangled_qubits = set(qubits)
         entangled_prev = set()
-        # TODO: Is this loop necessary?
         while len(entangled_qubits) != len(entangled_prev):
             entangled_prev = entangled_qubits
             for gate in self.program:
@@ -116,7 +115,6 @@ class Qdb(pdb.Pdb):
         rho_est = linear_inv_state_estimate(results, qubits)
         self.message(np.round(rho_est, 4))
         self.message("Purity: {}".format(np.trace(np.matmul(rho_est, rho_est))))
-        return rho_est
 
     do_tom = do_tomography
 

@@ -1,16 +1,16 @@
 from unittest import TestCase
 import pytest
 
-from pyquil import Program
+from pyquil import Program, get_qc
 from pyquil.gates import X, Y, Z, H, CZ, CNOT, SWAP
-import pdb
+import qdb
 
 
 class TestTrim(TestCase):
     def test_basic(self):
         qc = get_qc("3q-qvm")
         pq = Program([H(0), CNOT(0, 1), CNOT(1, 2)])
-        trimmed = pdb.Pdb(qc, pq).trim_program([0, 1, 2])
+        trimmed = qdb.Qdb(qc, pq).trim_program([0, 1, 2])
         self.assertEqual(trimmed, pq)
 
     def test_entangled(self):
@@ -25,7 +25,7 @@ class TestTrim(TestCase):
             return pq
 
         qc = get_qc("3q-qvm")
-        trimmed = pdb.Pdb(qc, construct_program(False)).trim_program([0, 1, 2])
+        trimmed = qdb.Qdb(qc, construct_program(False)).trim_program([0, 1, 2])
         self.assertEqual(trimmed, construct_program(True))
 
     @pytest.mark.skip("Not implemented")
@@ -39,5 +39,5 @@ class TestTrim(TestCase):
             return pq
 
         qc = get_qc("3q-qvm")
-        trimmed = pdb.Pdb(qc, construct_program(False)).trim_program([0])
+        trimmed = qdb.Qdb(qc, construct_program(False)).trim_program([0])
         self.assertEqual(trimmed, construct_program(True))
