@@ -1,5 +1,5 @@
 # runtime deps
-pyquil
+pyquil>=2.8.0
 
 # dev deps
 pytest

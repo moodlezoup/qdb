@@ -8,15 +8,15 @@ import numpy as np
 
 # Test programs with no control flow
 class TestLinear(TestCase):
-    @pytest.mark.skip("qdb.debug does not return a Wavefunction")
+    @pytest.mark.skip("do_tomography returns full density matrix for now")
     def test_simple(self):
-        qc = get_qc("3q", as_qvm=True)
+        qc = get_qc("3q-qvm")
 
         # |0, 0, 0>  -->  |+, 0, 1>
-        pq = Program([H(0), X(1), SWAP(1, 2), qdb.Breakpoint([0, 1, 2])])
+        pq = Program([H(0), X(1), SWAP(1, 2)])
         true_amplitudes = np.array([0, 1, 0, 0, 0, 1, 0, 0]) / np.sqrt(2)
 
-        wf = qdb.debug(qc, pq)
+        rho_est = qdb.Qdb(qc, pq).do_tomography()
 
         amplitudes = np.array([wf[i] for i in range(2 ** len(wf))])
         assert np.allclose(true_amplitudes, amplitudes)
