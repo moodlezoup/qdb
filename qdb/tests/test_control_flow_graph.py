@@ -72,7 +72,6 @@ class TestControlFlowGraph(TestCase):
         pq.measure(0, ro)
         pq.if_then(ro, HALT)
         pq += Program(X(0))
-        print(pq)
 
         G, basic_blocks = get_control_flow_graph(pq)
 
