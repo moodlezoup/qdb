@@ -3,6 +3,8 @@ import sys
 import typing
 from typing import Any, Iterable, List, Set
 
+from qdb.control_flow_graph import is_dag
+
 from forest.benchmarking.tomography import *
 from pyquil import Program
 from pyquil.api import QuantumComputer
@@ -36,6 +38,7 @@ class Qdb(pdb.Pdb):
         self.program = program
         self.prompt = "(Qdb) "
 
+    # Can we use `Program.get_qubits()`?
     def all_qubits(self):
         """
         Helper function to get all qubit indices that have been acted on by
@@ -53,16 +56,15 @@ class Qdb(pdb.Pdb):
         one or more of those provided, based entirely on which multi-qubit gates
         have been performed so far.
         """
+        # FIXME: This only works within a single basic block since unrelated qubits
+        #        can affect control flow.
         entangled_qubits = set(qubits)
         entangled_prev = set()
         while len(entangled_qubits) != len(entangled_prev):
             entangled_prev = entangled_qubits
             for gate in self.program:
-                # FIXME: Also check qubit measurements that affect control flow
                 if isinstance(gate, Gate):
                     gate_qubits = set(gate.get_qubits())
-                    # Here, two qubits are entangled if they share an operator
-                    # TODO: Is this a resonable definition?
                     if entangled_qubits & gate_qubits:
                         entangled_qubits |= gate_qubits
         return entangled_qubits
@@ -126,6 +128,11 @@ class Qdb(pdb.Pdb):
                 gate_qubits = set(gate.get_qubits())
                 if entangled_qubits & gate_qubits:
                     trimmed_program += gate
+        # FIXME: Once some instructions are trimmed, it is possible that the control
+        #        flow graph can be pruned which could affect the entangled set. This
+        #        should be ok in the common case, though.
+        if not is_dag(trimmed_program):
+            raise ValueError("Program is not a dag.")
         return trimmed_program
 
 
