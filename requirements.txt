@@ -1,6 +1,7 @@
 # runtime deps
-pyquil>=2.8.0
-networkx>=2.4
+pyquil
+forest-benchmarking
+networkx
 
 # dev deps
 pytest

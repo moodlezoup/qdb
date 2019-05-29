@@ -7,5 +7,5 @@ setup(
     url="https://github.com/mzhu25/qdb",
     license="MIT",
     packages=["qdb"],
-    install_requires=["pyquil"],
+    install_requires=["pyquil", "forest-benchmarking", "networkx"],
 )
