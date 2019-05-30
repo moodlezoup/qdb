@@ -29,14 +29,14 @@ class QuilBlock(NamedTuple):
     executed then all are guaranteed to execute.
     """
 
+    start_index: int
     body: List[AbstractInstruction]
     out_edges: List[AbstractInstruction]
-    start_index: int
 
     def __repr__(self) -> str:
-        inst_strs = [str(inst) for inst in body]
-        width = max([len(inst_str) in inst_strs])
-        pretty = "+-" + "-" * width + "-+\n"
+        inst_strs = [str(inst) for inst in self.body]
+        width = max([len(inst_str) for inst_str in inst_strs])
+        pretty = "\n+-" + "-" * width + "-+\n"
         for inst_str in inst_strs:
             pretty += "| " + inst_str.ljust(width) + " |\n"
         pretty += "+-" + "-" * width + "-+"
@@ -44,10 +44,9 @@ class QuilBlock(NamedTuple):
 
 
 class QuilControlFlowGraph(nx.DiGraph):
-    def __init__(self, qc: QuantumComputer, program: Program) -> None:
-        self.qc = qc
+    def __init__(self, program: Program) -> None:
         self.program = program
-        self.blocks = [QuilBlock([], start_index=-1, is_root=True)]
+        self.blocks = []
         nx.DiGraph.__init__(self)
         self._build_cfg()
 
@@ -56,51 +55,54 @@ class QuilControlFlowGraph(nx.DiGraph):
     def _build_cfg(self) -> None:
         """Constructs the control flow graph for the program."""
 
-        current_block = QuilBlock([], 0)
+        current_block = QuilBlock(start_index=0, body=[], out_edges=[])
         targets = {}
 
         for idx, inst in enumerate(self.program):
             if isinstance(inst, JumpTarget):
-                if current_block.instructions:
+                if current_block.body:
                     self.blocks.append(current_block)
                 # Next block is the jump target
-                current_block = QuilBlock([], idx)
+                current_block = QuilBlock(start_index=0, body=[], out_edges=[])
                 targets[inst.label] = len(self.blocks)
 
             # Handles the case where we have multiple Jump(Conditional)s in a row:
             # we want to treat this as multiple out-edges from a single node.
             elif isinstance(inst, (Jump, JumpConditional, Halt)):
-                if current_block.instructions:
+                if current_block.body:
                     self.blocks.append(current_block)
-                    current_block = QuilBlock([], idx)
+                    current_block = QuilBlock(start_index=0, body=[], out_edges=[])
                 self.blocks[-1].out_edges.append(inst)
 
             elif is_fallthrough_instruction(inst):
-                current_block.instructions.append(inst)
+                current_block.body.append(inst)
             else:
                 raise ValueError(f"Unhandled instruction type {type(inst)} for {inst}")
 
-        if current_block.instructions:
+        if current_block.body:
             self.blocks.append(current_block)
         if len(self.blocks) == 0:
             return
+        else:
+            self.add_nodes_from(range(len(self.blocks)))
 
         for block_idx, block in enumerate(self.blocks[:-1]):
             if not block.out_edges:
-                edges.append((block_idx, block_idx + 1))
+                self.add_edge(block_idx, block_idx + 1)
             else:
                 for inst in block.out_edges:
                     if isinstance(inst, Jump):
-                        edges.append((block_idx, targets[inst.target]))
+                        # Handles case where jump target is the end of the program
+                        if targets[inst.target] in self.nodes:
+                            self.add_edge(block_idx, targets[inst.target])
                     elif isinstance(inst, JumpConditional):
-                        edges.append((block_idx, block_idx + 1))
-                        edges.append(
-                            (
+                        self.add_edge(block_idx, block_idx + 1)
+                        if targets[inst.target] in self.nodes:
+                            self.add_edge(
                                 block_idx,
                                 targets[inst.target],
-                                {"condition": inst.condition},
+                                condition=inst.condition,
                             )
-                        )
                     else:
                         pass
 
