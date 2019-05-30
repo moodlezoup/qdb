@@ -86,8 +86,8 @@ class QuilControlFlowGraph(nx.DiGraph):
         else:
             self.add_nodes_from(range(len(self.blocks)))
 
-        for block_idx, block in enumerate(self.blocks[:-1]):
-            if not block.out_edges:
+        for block_idx, block in enumerate(self.blocks):
+            if not block.out_edges and (block_idx + 1) in self.nodes:
                 self.add_edge(block_idx, block_idx + 1)
             else:
                 for inst in block.out_edges:
@@ -96,7 +96,8 @@ class QuilControlFlowGraph(nx.DiGraph):
                         if targets[inst.target] in self.nodes:
                             self.add_edge(block_idx, targets[inst.target])
                     elif isinstance(inst, JumpConditional):
-                        self.add_edge(block_idx, block_idx + 1)
+                        if (block_idx + 1) in self.nodes:
+                            self.add_edge(block_idx, block_idx + 1)
                         if targets[inst.target] in self.nodes:
                             self.add_edge(
                                 block_idx,
