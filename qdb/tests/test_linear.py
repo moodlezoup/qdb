@@ -11,10 +11,10 @@ def test_simple():
     qc = get_qc("3q-qvm")
 
     # |0, 0, 0>  -->  |+, 0, 1>
-    pq = Program([H(0), X(1), SWAP(1, 2)])
+    pq = Program(H(0), X(1), SWAP(1, 2))
     true_amplitudes = np.array([0, 1, 0, 0, 0, 1, 0, 0]) / np.sqrt(2)
 
-    rho_est = qdb.Qdb(qc, pq).do_tomography()
+    rho_est = qdb.Qdb(qc, pq).do_tomography("0 1 2")
 
     amplitudes = np.array([wf[i] for i in range(2 ** len(wf))])
     assert np.allclose(true_amplitudes, amplitudes)

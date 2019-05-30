@@ -8,24 +8,25 @@ import qdb
 @pytest.mark.parametrize("qubits", [[0], [1], [2], [0, 1], [0, 2], [1, 2]])
 def test_basic(qubits):
     qc = get_qc("3q-qvm")
-    pq = Program([H(0), CNOT(0, 1), CNOT(1, 2)])
+    pq = Program(H(0), CNOT(0, 1), CNOT(1, 2))
     trimmed = qdb.Qdb(qc, pq).trim_program(qubits)
     assert trimmed == pq
 
 
-def test_entangled():
+@pytest.mark.parametrize("qubits", [[0], [1], [2], [0, 1], [0, 2], [1, 2]])
+def test_entangled(qubits):
     def construct_program(trimmed):
-        pq = Program([H(0), CNOT(0, 1), CNOT(1, 2)])
-        pq.declare("ro", "BIT", 1)
-        pq.measure(0, "ro")
+        pq = Program(H(0), CNOT(0, 1), CNOT(1, 2))
+        ro = pq.declare("ro", "BIT", 1)
+        pq.measure(0, ro)
         if trimmed:
-            pq.if_then("ro", X(0), X(1))
+            pq.if_then(ro, X(0), X(1))
         else:
-            pq.if_then("ro", Program([X(0), H(3)]), Program([X(1), CZ(3, 4)]))
+            pq.if_then(ro, Program(X(0), H(3)), Program(X(1), CZ(3, 4)))
         return pq
 
     qc = get_qc("3q-qvm")
-    trimmed = qdb.Qdb(qc, construct_program(False)).trim_program([0, 1, 2])
+    trimmed = qdb.Qdb(qc, construct_program(False)).trim_program(qubits)
     assert trimmed == construct_program(True)
 
 
@@ -33,10 +34,10 @@ def test_entangled():
 def test_if_then():
     def construct_program(trimmed):
         pq = Program(H(0))
-        pq.declare("ro", "BIT", 1)
-        pq.measure(0, "ro")
+        ro = pq.declare("ro", "BIT", 1)
+        pq.measure(0, ro)
         if not trimmed:
-            pq.if_then("ro", X(1), Y(1))
+            pq.if_then(ro, X(1), Y(1))
         return pq
 
     qc = get_qc("3q-qvm")

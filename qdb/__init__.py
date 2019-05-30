@@ -50,6 +50,7 @@ class Qdb(pdb.Pdb):
                 qubits |= set(gate.get_qubits())
         return qubits
 
+    # FIXME: This function should be moved out of `Qdb`
     def entanglement_set(self, qubits: List[int]) -> Set[int]:
         """
         Returns a conservative overestimate of the set of qubits entangled with
@@ -58,10 +59,12 @@ class Qdb(pdb.Pdb):
         """
         # FIXME: This only works within a single basic block since unrelated qubits
         #        can affect control flow.
+        # TODO: It is probably better to first build a graph and use
+        #       `networkx.descendants` or something similar
         entangled_qubits = set(qubits)
-        entangled_prev = set()
-        while len(entangled_qubits) != len(entangled_prev):
-            entangled_prev = entangled_qubits
+        num_entangled_prev = 0
+        while len(entangled_qubits) != num_entangled_prev:
+            num_entangled_prev = len(entangled_qubits)
             for gate in self.program:
                 if isinstance(gate, Gate):
                     gate_qubits = set(gate.get_qubits())
@@ -69,7 +72,7 @@ class Qdb(pdb.Pdb):
                         entangled_qubits |= gate_qubits
         return entangled_qubits
 
-    def do_entanglement(self, arg: List[int]) -> None:
+    def do_entanglement(self, arg: str) -> None:
         """
         CLI wrapper for entanglement_set
         """
@@ -82,7 +85,7 @@ class Qdb(pdb.Pdb):
 
     do_ent = do_entanglement
 
-    def do_tomography(self, arg: List[int]) -> None:
+    def do_tomography(self, arg: str) -> None:
         """tom(ography) [qubit_index [qubit_index...]]
         Runs state tomography on the qubits specified by the space-separated
         list of qubit indices. Without argument, run on all qubits in Program
@@ -120,14 +123,17 @@ class Qdb(pdb.Pdb):
 
     do_tom = do_tomography
 
+    # FIXME: This function should be moved out of `Qdb`
     def trim_program(self, qubits: List[int]) -> Program:
         entangled_qubits = self.entanglement_set(qubits)
         trimmed_program = Program()
-        for gate in self.program:
-            if isinstance(gate, Gate):
-                gate_qubits = set(gate.get_qubits())
+        for inst in self.program:
+            if isinstance(inst, Gate):
+                gate_qubits = set(inst.get_qubits())
                 if entangled_qubits & gate_qubits:
-                    trimmed_program += gate
+                    trimmed_program += inst
+            else:
+                trimmed_program += inst
         # FIXME: Once some instructions are trimmed, it is possible that the control
         #        flow graph can be pruned which could affect the entangled set. This
         #        should be ok in the common case, though.

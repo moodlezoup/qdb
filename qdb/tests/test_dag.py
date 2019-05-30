@@ -10,13 +10,12 @@ import numpy as np
 def test_simple():
     qc = get_qc("3q-qvm")
 
-    # TODO: How should we handle this case?
-    # |0, 0, 0>  -->  |?, ?, ?>
+    # |0, 0, 0>  -->  |0, 1, 0> or |1, 0, 1> (a mixed state)
     pq = Program(H(0))
     ro = pq.declare("ro", "BIT", 1)
     pq.measure(0, ro)
     pq.if_then(ro, X(1), X(2))
 
-    wf = qdb.Qdb(qc, pq).do_tomography()
+    wf = qdb.Qdb(qc, pq).do_tomography("0 1 2")
     # TODO: What should the wavefunction look like?
     assert False
