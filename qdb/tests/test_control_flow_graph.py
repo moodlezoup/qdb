@@ -1,6 +1,6 @@
 import pytest
 
-from qdb.control_flow_graph import get_control_flow_graph, is_dag
+from qdb.control_flow_graph import QuilControlFlowGraph
 import networkx as nx
 from pyquil import Program
 from pyquil.gates import X, H, CNOT, CCNOT, RX, NEG, AND, ADD, EQ
@@ -10,12 +10,12 @@ from pyquil.gates import EXCHANGE, CONVERT, LOAD, STORE, HALT, WAIT
 def test_simple():
     pq = Program(H(0), CNOT(0, 1))
 
-    G, basic_blocks = get_control_flow_graph(pq)
+    G = QuilControlFlowGraph(pq)
 
-    assert len(basic_blocks) == 1
-    assert set(G.nodes) == set(["root", 0])
-    assert set(G.edges) == set([("root", 0)])
-    assert is_dag(pq)
+    assert len(G.blocks) == 1
+    assert set(G.nodes) == set([0])
+    assert set(G.edges) == set()
+    assert G.is_dag()
 
 
 def test_if():
@@ -24,12 +24,12 @@ def test_if():
     pq.measure(0, ro)
     pq.if_then(ro, X(0), X(1))
 
-    G, basic_blocks = get_control_flow_graph(pq)
+    G = QuilControlFlowGraph(pq)
 
-    assert len(basic_blocks) == 4
-    assert set(G.nodes) == set(["root"] + list(range(len(basic_blocks))))
-    assert set(G.edges) == set([("root", 0), (0, 1), (0, 2), (1, 3), (2, 3)])
-    assert is_dag(pq)
+    assert len(G.blocks) == 3
+    assert set(G.nodes) == set(list(range(len(G.blocks))))
+    assert set(G.edges) == set([(0, 1), (0, 2)])
+    assert G.is_dag()
 
 
 def test_while():
@@ -40,12 +40,12 @@ def test_while():
     q_program.measure(0, ro)
     pq.while_do(ro, q_program)
 
-    G, basic_blocks = get_control_flow_graph(pq)
+    G = QuilControlFlowGraph(pq)
 
-    assert len(basic_blocks) == 4
-    assert set(G.nodes) == set(["root"] + list(range(len(basic_blocks))))
-    assert set(G.edges) == set([("root", 0), (0, 1), (1, 2), (1, 3), (2, 1)])
-    assert not is_dag(pq)
+    assert len(G.blocks) == 2
+    assert set(G.nodes) == set(list(range(len(G.blocks))))
+    assert set(G.edges) == set([(0, 1), (1, 1)])
+    assert not G.is_dag()
 
 
 def test_all_instructions():
@@ -59,12 +59,12 @@ def test_all_instructions():
     pq += Program(EXCHANGE(ro, ro), CONVERT(ro, ro))
     pq += Program(LOAD(ro, ro, ro), STORE(ro, ro, ro))
 
-    G, basic_blocks = get_control_flow_graph(pq)
+    G = QuilControlFlowGraph(pq)
 
-    assert len(basic_blocks) == 1
-    assert set(G.nodes) == set(["root", 0])
-    assert set(G.edges) == set([("root", 0)])
-    assert is_dag(pq)
+    assert len(G.blocks) == 1
+    assert set(G.nodes) == set([0])
+    assert set(G.edges) == set()
+    assert G.is_dag()
 
 
 def test_halt():
@@ -75,9 +75,9 @@ def test_halt():
     pq.if_then(ro, HALT)
     pq += Program(X(0))
 
-    G, basic_blocks = get_control_flow_graph(pq)
+    G = QuilControlFlowGraph(pq)
 
-    assert len(basic_blocks) == 4
-    assert set(G.nodes) == set(["root"] + list(range(len(basic_blocks))))
-    assert set(G.edges) == set([("root", 0), (0, 1), (0, 2), (1, 3)])
-    assert is_dag(pq)
+    assert len(G.blocks) == 2
+    assert set(G.nodes) == set(list(range(len(G.blocks))))
+    assert set(G.edges) == set([(0, 1)])
+    assert G.is_dag()

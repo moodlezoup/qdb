@@ -3,7 +3,7 @@ import sys
 import typing
 from typing import Any, Iterable, List, Set
 
-from qdb.control_flow_graph import is_dag
+from qdb.control_flow_graph import QuilControlFlowGraph
 
 from forest.benchmarking.tomography import *
 from pyquil import Program
@@ -137,7 +137,7 @@ class Qdb(pdb.Pdb):
         # FIXME: Once some instructions are trimmed, it is possible that the control
         #        flow graph can be pruned which could affect the entangled set. This
         #        should be ok in the common case, though.
-        if not is_dag(trimmed_program):
+        if not QuilControlFlowGraph(trimmed_program).is_dag():
             raise ValueError("Program is not a dag.")
         return trimmed_program
 
