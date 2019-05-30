@@ -27,11 +27,22 @@ class QuilBlock(NamedTuple):
     """
     A basic block is a sequence of instructions such that if one instruction is
     executed then all are guaranteed to execute.
+
+    Attributes
+    ----------
+    start_index : int
+        The index of the first instruction in the basic block (with respect to the
+        original program)
+    body : List[AbstractInstruction]
+        A list of non-control-flow instructions for this basic block
+    out_edges : List[AbstractInstruction]
+        A list of control flow instruction at the end of this basic block
     """
 
-    start_index: int
+    start_index: int  # TODO: Not really used yet
     body: List[AbstractInstruction]
     out_edges: List[AbstractInstruction]
+    # TODO: Maybe add a `label` (JumpTarget) attribute if useful
 
     def __repr__(self) -> str:
         inst_strs = [str(inst) for inst in self.body]
