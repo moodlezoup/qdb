@@ -1,9 +1,11 @@
 import pytest
+import numpy as np
 
-import qdb
 from pyquil import Program, get_qc
 from pyquil.gates import X, Y, Z, H, CZ, CNOT, SWAP
-import numpy as np
+
+import qdb
+
 
 # Test programs with control flow but no loops
 @pytest.mark.skip("Not implemented")

@@ -1,10 +1,11 @@
 import pytest
-
-from qdb.control_flow_graph import QuilControlFlowGraph
 import networkx as nx
+
 from pyquil import Program
 from pyquil.gates import X, H, CNOT, CCNOT, RX, NEG, AND, ADD, EQ
 from pyquil.gates import EXCHANGE, CONVERT, LOAD, STORE, HALT, WAIT
+
+from qdb.control_flow_graph import QuilControlFlowGraph
 
 
 def test_simple():

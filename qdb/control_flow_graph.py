@@ -1,5 +1,6 @@
 from typing import List, NamedTuple
 import networkx as nx
+
 from pyquil import Program
 from pyquil.quilbase import (
     AbstractInstruction,

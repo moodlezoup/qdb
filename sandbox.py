@@ -1,8 +1,10 @@
-import qdb
-from pyquil import Program, get_qc, list_quantum_computers
-from pyquil.gates import X, Y, Z, H, CZ, CNOT, SWAP
 import numpy as np
-from pyquil.api import QVMConnection
+
+from pyquil import Program, get_qc, list_quantum_computers
+from pyquil.gates import *
+
+import qdb
+
 
 pq = Program()
 qc = get_qc("3q-qvm")

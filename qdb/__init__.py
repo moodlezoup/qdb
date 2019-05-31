@@ -3,15 +3,15 @@ import sys
 import typing
 from typing import Any, List
 
-from qdb.control_flow_graph import QuilControlFlowGraph
-from qdb.utils import *
-
 from forest.benchmarking.tomography import *
 from pyquil import Program
 from pyquil.api import QuantumComputer
 from pyquil.operator_estimation import measure_observables
 from pyquil.paulis import sX, sY, sZ
 from pyquil.quilbase import Gate, Nop
+
+from qdb.control_flow_graph import QuilControlFlowGraph
+from qdb.utils import *
 
 
 class Qdb(pdb.Pdb):

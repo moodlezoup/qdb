@@ -1,9 +1,11 @@
 import pytest
+import numpy as np
 
-import qdb
 from pyquil import Program, get_qc
 from pyquil.gates import X, Y, Z, H, CZ, CNOT, SWAP
-import numpy as np
+
+import qdb
+
 
 # Test programs with no control flow
 @pytest.mark.skip("do_tomography returns full density matrix for now")
