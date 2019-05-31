@@ -1,5 +1,6 @@
 from typing import List, Set
 import networkx as nx
+import itertools
 from qdb.control_flow_graph import QuilControlFlowGraph
 from pyquil import Program
 from pyquil.quilbase import Gate
@@ -15,33 +16,38 @@ def get_necessary_qubits(
     if len(qubits) == 0:
         return set()
 
-    # FIXME: Does not pass `test_simple_control_flow`
-
-    # The set of qubits or classical bits that any later control flow depends on
+    # The set of qubits or classical bits that determine later control flow
+    control_flow_dependencies = set(
+        itertools.chain.from_iterable(
+            [
+                cfg.blocks[i].get_local_control_flow_qubits()
+                for i in nx.descendants(cfg, block_idx) | set([block_idx])
+            ]
+        )
+    )
+    # The dependency graph of qubits or classical bits that dermine later control flow
     dependency_graph = cfg.blocks[block_idx].get_local_dependency_graph()
     for i in nx.descendants(cfg, block_idx):
         dependency_graph.add_edges_from(
             cfg.blocks[i].get_local_dependency_graph().edges
-        )
-    bits = list(cfg.blocks[block_idx].get_control_flow_bits())
-    if len(dependency_graph.edges) == 0 or len(bits) == 0:
-        control_flow_dependencies = set()
-    else:
-        control_flow_dependencies = set(
-            [i for i in nx.dfs_tree(dependency_graph, bits[0]) if isinstance(i, int)]
         )
 
     # Build the complete graph of dependent qubits with respect to this block
     entangled_graph = cfg.blocks[block_idx].get_local_entangled_graph()
     for i in nx.ancestors(cfg, block_idx) | nx.descendants(cfg, block_idx):
         entangled_graph.add_edges_from(cfg.blocks[i].get_local_entangled_graph().edges)
-    nx.add_path(entangled_graph, control_flow_dependencies)
-    nx.add_path(entangled_graph, qubits)
+    entangled_graph.add_edges_from(dependency_graph.edges)
+    nx.add_path(entangled_graph, set(qubits) | control_flow_dependencies)
 
     if len(entangled_graph.edges) == 0:
-        return set(qubits) | control_flow_dependencies
+        control_flow_qubits = set(
+            filter(lambda i: isinstance(i, int), control_flow_dependencies)
+        )
+        return set(qubits) | control_flow_qubits
 
-    return set(nx.dfs_tree(entangled_graph, qubits[0])) | control_flow_dependencies
+    return set(
+        filter(lambda i: isinstance(i, int), nx.dfs_tree(entangled_graph, qubits[0]))
+    )
 
 
 def trim_program(pq: Program, qubits: List[int]) -> Program:

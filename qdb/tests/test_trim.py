@@ -57,7 +57,7 @@ def test_simple_control_flow_dependency():
 
 def test_control_flow_dependency():
     def construct_program(trimmed):
-        pq = Program(H(0), H(2), CNOT(0, 1), CNOT(2, 3), X(0), X(2))
+        pq = Program(H(2), CNOT(0, 1), CNOT(2, 3))
         ro = pq.declare("ro")
         pq.measure(3, ro)
         if trimmed:

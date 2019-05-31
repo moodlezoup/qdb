@@ -62,10 +62,26 @@ class QuilBlock(NamedTuple):
                 nx.add_path(entangled_graph, inst.get_qubits())
         return entangled_graph
 
+    def get_local_control_flow_qubits(self) -> Set[int]:
+        """Returns a set of qubits that determine this block's control flow"""
+        bits = list(self.get_control_flow_bits())
+        if len(bits) == 0:
+            return set()
+
+        dependency_graph = self.get_local_dependency_graph()
+        nx.add_path(dependency_graph, bits)
+
+        dependency_graph.add_edges_from(self.get_local_entangled_graph().edges)
+        if len(dependency_graph.edges) == 0:
+            return set(bits)
+        return set(
+            [i for i in nx.dfs_tree(dependency_graph, bits[0]) if isinstance(i, int)]
+        )
+
     def get_local_dependency_graph(self) -> nx.Graph:
         """
-        Returns the graph of dependent qubits and classical bits considering only this
-        basic block
+        Returns the graph of entangled qubits and classical bits that determine this
+        block's control flow
         """
         dependency_graph = nx.Graph()
         for inst in self.body:
@@ -76,12 +92,12 @@ class QuilBlock(NamedTuple):
                     dependency_graph.add_edge(inst.left, inst.right)
             elif isinstance(inst, Measurement):
                 dependency_graph.add_edge(inst.classical_reg, inst.qubit.index)
-        dependency_graph.add_edges_from(self.get_local_entangled_graph().edges)
         return dependency_graph
 
     def get_control_flow_bits(self) -> Set[MemoryReference]:
         """
-        Returns the set of classical bits that directly affect control flow of this basic block
+        Returns the set of classical bits that directly affect control flow of this
+        basic block
         """
         return set(
             [
