@@ -2,9 +2,6 @@ import pdb
 import sys
 from typing import Any
 
-from qdb.control_flow_graph import QuilControlFlowGraph
-from qdb.utils import trim_program, get_necessary_qubits
-
 from forest.benchmarking.tomography import *
 from pyquil import Program
 from pyquil.api import QuantumComputer
@@ -12,7 +9,7 @@ from pyquil.operator_estimation import measure_observables
 from pyquil.quilbase import Gate
 
 from qdb.control_flow_graph import QuilControlFlowGraph
-from qdb.utils import *
+from qdb.utils import trim_program, get_necessary_qubits
 
 
 class Qdb(pdb.Pdb):

@@ -1,9 +1,10 @@
 import pytest
 
-from qdb.control_flow_graph import QuilControlFlowGraph
-from qdb.utils import get_necessary_qubits
 from pyquil import Program
 from pyquil.gates import X, CNOT, CCNOT
+
+from qdb.control_flow_graph import QuilControlFlowGraph
+from qdb.utils import get_necessary_qubits
 
 
 @pytest.mark.parametrize(
@@ -50,15 +51,16 @@ def test_simple_control_flow():
     G = QuilControlFlowGraph(pq)
 
     assert len(G.blocks) == 5
-    # FIXME: Need to figure out correct behavior
-    assert get_necessary_qubits(G, 0, [0]) == set([0, 1, 2, 3])
-    assert get_necessary_qubits(G, 1, [0]) == set([0, 1])
-    assert get_necessary_qubits(G, 2, [0]) == set([0, 1])
-    assert get_necessary_qubits(G, 3, [0]) == set([0, 1])
-    assert get_necessary_qubits(G, 4, [0]) == set([0, 1])
+    for qubits in ([0], [1]):
+        assert get_necessary_qubits(G, 0, qubits) == set([0, 1, 2, 3])
+        assert get_necessary_qubits(G, 1, qubits) == set([0, 1])
+        assert get_necessary_qubits(G, 2, qubits) == set([0, 1])
+        assert get_necessary_qubits(G, 3, qubits) == set([0, 1])
+        assert get_necessary_qubits(G, 4, qubits) == set([0, 1])
 
-    assert get_necessary_qubits(G, 0, [2]) == set([0, 1, 2, 3])
-    assert get_necessary_qubits(G, 1, [2]) == set([2, 3])
-    assert get_necessary_qubits(G, 2, [2]) == set([2, 3])
-    assert get_necessary_qubits(G, 3, [2]) == set([2, 3])
-    assert get_necessary_qubits(G, 4, [2]) == set([2, 3])
+    for qubits in ([2], [3]):
+        assert get_necessary_qubits(G, 0, qubits) == set([0, 1, 2, 3])
+        assert get_necessary_qubits(G, 1, qubits) == set([2, 3])
+        assert get_necessary_qubits(G, 2, qubits) == set([2, 3])
+        assert get_necessary_qubits(G, 3, qubits) == set([2, 3])
+        assert get_necessary_qubits(G, 4, qubits) == set([2, 3])

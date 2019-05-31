@@ -1,9 +1,10 @@
 from typing import List, Set
 import networkx as nx
 import itertools
-from qdb.control_flow_graph import QuilControlFlowGraph
 from pyquil import Program
 from pyquil.quilbase import Gate
+
+from qdb.control_flow_graph import QuilControlFlowGraph
 
 
 def get_necessary_qubits(

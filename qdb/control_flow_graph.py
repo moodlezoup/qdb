@@ -1,4 +1,4 @@
-from typing import List, Union, Set, NamedTuple
+from typing import List, Set, NamedTuple
 import networkx as nx
 
 from pyquil import Program
