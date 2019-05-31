@@ -40,15 +40,13 @@ def get_necessary_qubits(
     entangled_graph.add_edges_from(dependency_graph.edges)
     nx.add_path(entangled_graph, set(qubits) | control_flow_dependencies)
 
-    if len(entangled_graph.edges) == 0:
-        control_flow_qubits = set(
-            filter(lambda i: isinstance(i, int), control_flow_dependencies)
-        )
-        return set(qubits) | control_flow_qubits
+    def filter_qubits(nodes):
+        return set(filter(lambda i: isinstance(i, int), nodes))
 
-    return set(
-        filter(lambda i: isinstance(i, int), nx.dfs_tree(entangled_graph, qubits[0]))
-    )
+    if len(entangled_graph.edges) == 0:
+        return set(qubits) | filter_qubits(control_flow_dependencies)
+
+    return filter_qubits(nx.dfs_tree(entangled_graph, qubits[0]))
 
 
 def trim_program(pq: Program, qubits: List[int]) -> Program:

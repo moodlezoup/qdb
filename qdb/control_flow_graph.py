@@ -75,7 +75,7 @@ class QuilBlock(NamedTuple):
         if len(dependency_graph.edges) == 0:
             return set(bits)
         return set(
-            [i for i in nx.dfs_tree(dependency_graph, bits[0]) if isinstance(i, int)]
+            filter(lambda i: isinstance(i, int), nx.dfs_tree(dependency_graph, bits[0]))
         )
 
     def get_local_dependency_graph(self) -> nx.Graph:
