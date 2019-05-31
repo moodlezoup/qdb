@@ -38,18 +38,6 @@ class Qdb(pdb.Pdb):
         self.program = program
         self.prompt = "(Qdb) "
 
-    # Can we use `Program.get_qubits()`?
-    def all_qubits(self):
-        """
-        Helper function to get all qubit indices that have been acted on by
-        gates in the program so far.
-        """
-        qubits = set()
-        for gate in self.program:
-            if isinstance(gate, Gate):
-                qubits |= set(gate.get_qubits())
-        return qubits
-
     # FIXME: This function should be moved out of `Qdb`
     def entanglement_set(self, qubits: List[int]) -> Set[int]:
         """
@@ -99,7 +87,7 @@ class Qdb(pdb.Pdb):
                 reply = "no"
             reply = reply.strip().lower()
             if reply in ("y", "yes"):
-                qubits = self.all_qubits()
+                qubits = list(self.program.get_qubits())
         else:
             try:
                 qubits = [int(x) for x in arg.split()]
