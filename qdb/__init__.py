@@ -1,9 +1,10 @@
 import pdb
 import sys
 import typing
-from typing import Any, Iterable, List, Set
+from typing import Any, List
 
 from qdb.control_flow_graph import QuilControlFlowGraph
+from qdb.utils import *
 
 from forest.benchmarking.tomography import *
 from pyquil import Program
@@ -38,28 +39,6 @@ class Qdb(pdb.Pdb):
         self.program = program
         self.prompt = "(Qdb) "
 
-    # FIXME: This function should be moved out of `Qdb`
-    def entanglement_set(self, qubits: List[int]) -> Set[int]:
-        """
-        Returns a conservative overestimate of the set of qubits entangled with
-        one or more of those provided, based entirely on which multi-qubit gates
-        have been performed so far.
-        """
-        # FIXME: This only works within a single basic block since unrelated qubits
-        #        can affect control flow.
-        # TODO: It is probably better to first build a graph and use
-        #       `networkx.descendants` or something similar
-        entangled_qubits = set(qubits)
-        num_entangled_prev = 0
-        while len(entangled_qubits) != num_entangled_prev:
-            num_entangled_prev = len(entangled_qubits)
-            for gate in self.program:
-                if isinstance(gate, Gate):
-                    gate_qubits = set(gate.get_qubits())
-                    if entangled_qubits & gate_qubits:
-                        entangled_qubits |= gate_qubits
-        return entangled_qubits
-
     def do_entanglement(self, arg: str) -> None:
         """
         CLI wrapper for entanglement_set
@@ -69,7 +48,9 @@ class Qdb(pdb.Pdb):
         except ValueError:
             self.message("Qubit indices must be specified as a space-separated list")
             return
-        self.message("Entanglement set: {}".format(self.entanglement_set(qubits)))
+        self.message(
+            "Entanglement set: {}".format(entanglement_set(self.program, qubits))
+        )
 
     do_ent = do_entanglement
 
@@ -98,7 +79,7 @@ class Qdb(pdb.Pdb):
                 return
 
         experiment = generate_state_tomography_experiment(
-            self.trim_program(qubits), qubits
+            trim_program(self.program, qubits), qubits
         )
         # TODO: Let user specify n_shots (+ other params)
         results = list(
@@ -110,24 +91,6 @@ class Qdb(pdb.Pdb):
         self.message("Purity: {}".format(np.trace(np.matmul(rho_est, rho_est))))
 
     do_tom = do_tomography
-
-    # FIXME: This function should be moved out of `Qdb`
-    def trim_program(self, qubits: List[int]) -> Program:
-        entangled_qubits = self.entanglement_set(qubits)
-        trimmed_program = Program()
-        for inst in self.program:
-            if isinstance(inst, Gate):
-                gate_qubits = set(inst.get_qubits())
-                if entangled_qubits & gate_qubits:
-                    trimmed_program += inst
-            else:
-                trimmed_program += inst
-        # FIXME: Once some instructions are trimmed, it is possible that the control
-        #        flow graph can be pruned which could affect the entangled set. This
-        #        should be ok in the common case, though.
-        if not QuilControlFlowGraph(trimmed_program).is_dag():
-            raise ValueError("Program is not a dag.")
-        return trimmed_program
 
 
 def set_trace(qc: QuantumComputer, program: Program, header=None):
