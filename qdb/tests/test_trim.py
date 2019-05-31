@@ -6,7 +6,7 @@ from pyquil.gates import X, Y, Z, H, CZ, CNOT, SWAP
 from qdb.utils import trim_program
 
 
-@pytest.mark.parametrize("qubits", [[0], [1], [2], [0, 1], [0, 2], [1, 2]])
+@pytest.mark.parametrize("qubits", [[0], [1], [2], [0, 1], [0, 2], [1, 2], [0, 1, 2]])
 def test_basic(qubits):
     pq = Program(H(0), CNOT(0, 1), CNOT(1, 2))
     trimmed = trim_program(pq, qubits)

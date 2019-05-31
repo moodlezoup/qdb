@@ -1,4 +1,4 @@
-from typing import List, NamedTuple
+from typing import List, Set, NamedTuple
 import networkx as nx
 
 from pyquil import Program
@@ -21,6 +21,7 @@ from pyquil.quilbase import (
     Halt,
     ResetQubit,
     Nop,
+    MemoryReference,
 )
 
 
@@ -46,13 +47,59 @@ class QuilBlock(NamedTuple):
     # TODO: Maybe add a `label` (JumpTarget) attribute if useful
 
     def __repr__(self) -> str:
-        inst_strs = [str(inst) for inst in self.body]
+        inst_strs = [str(inst) for inst in self.body + self.out_edges]
         width = max([len(inst_str) for inst_str in inst_strs])
         pretty = "\n+-" + "-" * width + "-+\n"
         for inst_str in inst_strs:
             pretty += "| " + inst_str.ljust(width) + " |\n"
         pretty += "+-" + "-" * width + "-+"
         return pretty
+
+    def get_local_entangled_qubits(self, qubits: List[int]) -> Set[int]:
+        """
+        Given a list of qubits, return the set of qubits that are entangled when
+        considering only this basic block
+        """
+        if len(qubits) == 0:
+            return set()
+
+        entangled_graph = nx.Graph()
+        for inst in self.body:
+            if isinstance(inst, Gate):
+                nx.add_path(entangled_graph, inst.get_qubits())
+        nx.add_path(entangled_graph, qubits)
+
+        return set(nx.dfs_tree(entangled_graph, qubits[0]))
+
+    def get_local_control_flow_dependent_qubits(self) -> Set[int]:
+        """
+        Returns the set of qubits that the control flow inside this basic block
+        depends on when considering only this basic block
+        """
+        bits = [
+            inst.condition
+            for inst in self.out_edges
+            if isinstance(inst, JumpConditional)
+        ]
+        bits = list(set(bits))
+        if len(bits) == 0:
+            return set()
+
+        dependency_graph = nx.Graph()
+        for inst in self.body:
+            if isinstance(inst, LogicalBinaryOp):
+                dependency_graph.add_edge(inst.left, inst.right)
+            elif isinstance(inst, ArithmeticBinaryOp):
+                if isinstance(inst.right, MemoryReference):
+                    dependency_graph.add_edge(inst.left, inst.right)
+        nx.add_path(dependency_graph, bits)
+        dependent_bits = set(nx.dfs_tree(dependency_graph, bits[0]))
+        qubits = [
+            inst.qubit.index
+            for inst in self.body
+            if isinstance(inst, Measurement) and inst.classical_reg in dependent_bits
+        ]
+        return self.get_local_entangled_qubits(list(set(qubits)))
 
 
 class QuilControlFlowGraph(nx.DiGraph):
