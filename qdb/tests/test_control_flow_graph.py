@@ -27,9 +27,9 @@ def test_if():
 
     G = QuilControlFlowGraph(pq)
 
-    assert len(G.blocks) == 3
+    assert len(G.blocks) == 4
     assert set(G.nodes) == set(list(range(len(G.blocks))))
-    assert set(G.edges) == set([(0, 1), (0, 2)])
+    assert set(G.edges) == set([(0, 1), (0, 2), (1, 3), (2, 3)])
     assert G.is_dag()
 
 
@@ -43,9 +43,9 @@ def test_while():
 
     G = QuilControlFlowGraph(pq)
 
-    assert len(G.blocks) == 2
+    assert len(G.blocks) == 4
     assert set(G.nodes) == set(list(range(len(G.blocks))))
-    assert set(G.edges) == set([(0, 1), (1, 1)])
+    assert set(G.edges) == set([(0, 1), (1, 2), (1, 3), (2, 1)])
     assert not G.is_dag()
 
 
@@ -78,7 +78,7 @@ def test_halt():
 
     G = QuilControlFlowGraph(pq)
 
-    assert len(G.blocks) == 2
+    assert len(G.blocks) == 3
     assert set(G.nodes) == set(list(range(len(G.blocks))))
-    assert set(G.edges) == set([(0, 1)])
+    assert set(G.edges) == set([(0, 1), (0, 2)])
     assert G.is_dag()

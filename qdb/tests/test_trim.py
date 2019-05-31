@@ -29,7 +29,6 @@ def test_entangled(qubits):
     assert trimmed == construct_program(True)
 
 
-@pytest.mark.skip("Not implemented")
 def test_if_then():
     def construct_program(trimmed):
         pq = Program(H(0))
@@ -37,13 +36,15 @@ def test_if_then():
         pq.measure(0, ro)
         if not trimmed:
             pq.if_then(ro, X(1), Y(1))
+        else:
+            # TODO: Remove unused blocks
+            pq.if_then(ro, Program())
         return pq
 
     trimmed = trim_program(construct_program(False), [0])
     assert trimmed == construct_program(True)
 
 
-@pytest.mark.skip("Not implemented")
 def test_simple_control_flow_dependency():
     pq = Program(H(0))
     ro = pq.declare("ro")
@@ -54,7 +55,6 @@ def test_simple_control_flow_dependency():
     assert trimmed == pq
 
 
-@pytest.mark.skip("Not implemented")
 def test_control_flow_dependency():
     def construct_program(trimmed):
         pq = Program(H(0), H(2), CNOT(0, 1), CNOT(2, 3), X(0), X(2))

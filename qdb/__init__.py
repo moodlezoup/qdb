@@ -1,14 +1,15 @@
 import pdb
 import sys
-import typing
-from typing import Any, List
+from typing import Any
+
+from qdb.control_flow_graph import QuilControlFlowGraph
+from qdb.utils import trim_program, get_necessary_qubits
 
 from forest.benchmarking.tomography import *
 from pyquil import Program
 from pyquil.api import QuantumComputer
 from pyquil.operator_estimation import measure_observables
-from pyquil.paulis import sX, sY, sZ
-from pyquil.quilbase import Gate, Nop
+from pyquil.quilbase import Gate
 
 from qdb.control_flow_graph import QuilControlFlowGraph
 from qdb.utils import *
@@ -48,8 +49,9 @@ class Qdb(pdb.Pdb):
         except ValueError:
             self.message("Qubit indices must be specified as a space-separated list")
             return
+        cfg = QuilControlFlowGraph(self.program)
         self.message(
-            "Entanglement set: {}".format(entanglement_set(self.program, qubits))
+            f"Entanglement set: {get_necessary_qubits(cfg, len(cfg.blocks) - 1, qubits)}"
         )
 
     do_ent = do_entanglement
@@ -78,9 +80,11 @@ class Qdb(pdb.Pdb):
                 )
                 return
 
-        experiment = generate_state_tomography_experiment(
-            trim_program(self.program, qubits), qubits
-        )
+        trimmed_program = trim_program(self.program, qubits)
+        if not QuilControlFlowGraph(trimmed_program).is_dag():
+            raise ValueError("Program is not a dag!")
+
+        experiment = generate_state_tomography_experiment(trimmed_program, qubits)
         # TODO: Let user specify n_shots (+ other params)
         results = list(
             measure_observables(qc=self.qc, tomo_experiment=experiment, n_shots=1000)
