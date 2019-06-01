@@ -60,7 +60,13 @@ class Qdb(pdb.Pdb):
         # print wavefunction with eigenval == 1
         for eigenval, eigenvector in zip(vals, vecs.T):
             if (np.round(eigenval) == 1.0):
-                self.message(f"Estimated wavefunction: {np.round(eigenvector, 4)}")
+                mes = f"Estimated wavefunction:\n"
+                for i, val in enumerate(eigenvector):
+                    dec = f"{i:b}"
+                    while(len(dec) < dim): dec = "0" + dec
+                    mes += (f"{np.round(val, 4)} |{dec}>")
+                    if i < len(rho_est) - 1: mes += " + "
+                self.message(mes)
 
     def do_tomography(self, arg: str) -> None:
         """tom(ography) [qubit_index [qubit_index...]]
