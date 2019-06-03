@@ -53,20 +53,21 @@ class Qdb(pdb.Pdb):
 
     do_ent = do_entanglement
 
-    def recreateWavefunction(self, rho_est: np.ndarray) -> None:
+    def recreate_wavefunction(self, rho_est: np.ndarray, epsilon: float = 1e-2) -> None:
         # Determine eigenvals and eigenvectors of density function
         vals, vecs = np.linalg.eig(rho_est)
         dim = np.log2(len(rho_est))
-        # print wavefunction with eigenval == 1
-        for eigenval, eigenvector in zip(vals, vecs.T):
-            if (np.round(eigenval) == 1.0):
-                mes = f"Estimated wavefunction:\n"
-                for i, val in enumerate(eigenvector):
-                    dec = f"{i:b}"
-                    while(len(dec) < dim): dec = "0" + dec
-                    mes += (f"{np.round(val, 4)} |{dec}>")
-                    if i < len(rho_est) - 1: mes += " + "
-                self.message(mes)
+        format_spec = f"0{int(dim)}b"
+        for eigenval, eigenvector in zip(np.real(vals), vecs.T):
+            if eigenval > epsilon:
+                psi = " + ".join(
+                    [
+                        f"{np.round(a, 4)} |{format(i, format_spec)}>"
+                        for i, a in enumerate(eigenvector)
+                        if np.linalg.norm(a) > epsilon
+                    ]
+                )
+                self.message(f"prob={np.round(eigenval, 4)}, \u03a8 = {psi}")
 
     def do_tomography(self, arg: str) -> None:
         """tom(ography) [qubit_index [qubit_index...]]
@@ -105,7 +106,7 @@ class Qdb(pdb.Pdb):
         rho_est = linear_inv_state_estimate(results, qubits)
         self.message(np.round(rho_est, 4))
         self.message("Purity: {}".format(np.trace(np.matmul(rho_est, rho_est))))
-        self.recreateWavefunction(rho_est)
+        self.recreate_wavefunction(rho_est)
 
     do_tom = do_tomography
 
