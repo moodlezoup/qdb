@@ -55,7 +55,7 @@ class QuilBlock(NamedTuple):
         pretty += "+-" + "-" * width + "-+"
         return pretty
 
-    def get_local_entangled_graph(self) -> nx.Graph:
+    def get_local_entangled_graph(self) -> nx.DiGraph:
         """
         Returns the directed graph of entangled qubits considering only this basic
         block. Nodes are a tuple of qubits and instruction indices. There are directed
@@ -68,10 +68,18 @@ class QuilBlock(NamedTuple):
            them.
         """
         entangled_graph = nx.DiGraph()
+        root_nodes = {}
+        leaf_nodes = {}
         instructions = list(enumerate(self.body, start=self.start_index))
         for indexB, instB in instructions:
-            if isinstance(instB, Gate):
+            if isinstance(instB, Measurement):
+                root_nodes[instB.qubit.index] = indexB
+                if instB.qubit.index not in leaf_nodes:
+                    leaf_nodes[instB.qubit.index] = indexB
+            elif isinstance(instB, Gate):
                 qubits = instB.get_qubits()
+                root_nodes.update([(indexB, q) for q in qubits])
+                leaf_nodes.update([(indexB, q) for q in qubits if q not in leaf_nodes])
                 if len(qubits) > 1:
                     nodes = [(indexB, q) for q in qubits]
                     nx.add_path(entangled_graph, nodes + [nodes[0]])
@@ -86,13 +94,14 @@ class QuilBlock(NamedTuple):
                         )
                     elif isinstance(instA, Measurement) and instA.qubit.index in qubits:
                         qubits.remove(instA.qubit.index)
+                        del root_nodes[instA.qubit.index]
                         entangled_graph.add_edge(
                             (indexA, instA.qubit.index), (indexB, instA.qubit.index)
                         )
 
         return entangled_graph
 
-    def get_local_dependency_graph(self) -> nx.Graph:
+    def get_local_dependency_graph(self) -> nx.DiGraph:
         """
         Returns the directed graph of dependent classical bits and their corresponding
         qubits that determine this block's control flow
