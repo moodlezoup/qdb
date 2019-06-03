@@ -12,6 +12,7 @@ from pyquil.quilbase import (
     ArithmeticBinaryOp,
     ClassicalExchange,
     ClassicalConvert,
+    ClassicalMove,
     ClassicalLoad,
     ClassicalStore,
     ClassicalComparison,
@@ -55,44 +56,113 @@ class QuilBlock(NamedTuple):
         return pretty
 
     def get_local_entangled_graph(self) -> nx.Graph:
-        """Returns the graph of entangled qubits considering only this basic block"""
-        entangled_graph = nx.Graph()
-        for inst in self.body:
-            if isinstance(inst, Gate):
-                nx.add_path(entangled_graph, inst.get_qubits())
+        """
+        Returns the directed graph of entangled qubits considering only this basic
+        block. Nodes are a tuple of qubits and instruction indices. There are directed
+        edges so that if qubit A depends on qubit B then there is a path from A to B.
+        This is accomplished by the following rules:
+
+        1. There are directed edges between all qubits within a multi-qubit gate.
+        2. There is a directed edge from two nodes that share a qubit that goes from
+           the later gate to the earlier gate if that qubit is not measured between
+           them.
+        """
+        entangled_graph = nx.DiGraph()
+        instructions = list(enumerate(self.body, start=self.start_index))
+        for indexB, instB in instructions:
+            if isinstance(instB, Gate):
+                qubits = instB.get_qubits()
+                if len(qubits) > 1:
+                    nodes = [(indexB, q) for q in qubits]
+                    nx.add_path(entangled_graph, nodes + [nodes[0]])
+                for indexA, instA in instructions[indexB + 1 - self.start_index :]:
+                    if isinstance(instA, Gate):
+                        entangled_graph.add_edges_from(
+                            [
+                                ((indexA, q), (indexB, q))
+                                for q in instA.get_qubits()
+                                if q in qubits
+                            ]
+                        )
+                    elif isinstance(instA, Measurement) and instA.qubit.index in qubits:
+                        qubits.remove(instA.qubit.index)
+                        entangled_graph.add_edge(
+                            (indexA, instA.qubit.index), (indexB, instA.qubit.index)
+                        )
+
         return entangled_graph
-
-    def get_local_control_flow_qubits(self) -> Set[int]:
-        """Returns a set of qubits that determine this block's control flow"""
-        bits = list(self.get_control_flow_bits())
-        if len(bits) == 0:
-            return set()
-
-        dependency_graph = self.get_local_dependency_graph()
-        nx.add_path(dependency_graph, bits)
-
-        dependency_graph.add_edges_from(self.get_local_entangled_graph().edges)
-        if len(dependency_graph.edges) == 0:
-            return set(bits)
-        return set(
-            filter(lambda i: isinstance(i, int), nx.dfs_tree(dependency_graph, bits[0]))
-        )
 
     def get_local_dependency_graph(self) -> nx.Graph:
         """
-        Returns the graph of entangled qubits and classical bits that determine this
-        block's control flow
+        Returns the directed graph of dependent classical bits and their corresponding
+        qubits that determine this block's control flow
         """
-        dependency_graph = nx.Graph()
-        for inst in self.body:
-            if isinstance(inst, LogicalBinaryOp):
-                dependency_graph.add_edge(inst.left, inst.right)
-            elif isinstance(inst, ArithmeticBinaryOp):
-                if isinstance(inst.right, MemoryReference):
-                    dependency_graph.add_edge(inst.left, inst.right)
-            elif isinstance(inst, Measurement):
-                dependency_graph.add_edge(inst.classical_reg, inst.qubit.index)
-        return dependency_graph
+        edges = []
+        instructions = [
+            (index, inst)
+            for index, inst in enumerate(self.body, start=self.start_index)
+        ]
+        for i, (indexB, instB) in enumerate(instructions):
+            if isinstance(instB, Measurement):
+                register = instB.classical_reg
+                edges.append(((indexB, register), (indexB, instB.qubit.index)))
+            elif isinstance(instB, UnaryClassicalInstruction):
+                register = instB.target
+            elif isinstance(
+                instB,
+                (
+                    LogicalBinaryOp,
+                    ArithmeticBinaryOp,
+                    ClassicalMove,
+                    ClassicalExchange,
+                    ClassicalConvert,
+                ),
+            ):
+                register = instB.left
+                if isinstance(instB.right, MemoryReference):
+                    edges.append(((indexB, register), (indexB, instB.right)))
+            elif isinstance(instB, ClassicalLoad):
+                register = instB.target
+                edges.append(((indexB, register), (indexB, instB.right)))
+                if isinstance(instB.left, MemoryReference):
+                    edges.append(((indexB, register), (indexB, instB.left)))
+            elif isinstance(instB, ClassicalStore):
+                register = instB.target
+                edges.append(((indexB, register), (indexB, instB.left)))
+                if isinstance(instB.right, MemoryReference):
+                    edges.append(((indexB, register), (indexB, instB.right)))
+            elif isinstance(instB, ClassicalComparison):
+                register = instB.target
+                edges.append(((indexB, register), (indexB, instB.left)))
+                if isinstance(instB.right, MemoryReference):
+                    edges.append(((indexB, register), (indexB, instB.right)))
+            else:
+                continue
+            assert isinstance(register, MemoryReference)
+
+            for indexA, instA in instructions[i + 1 :]:
+                if isinstance(instA, Measurement) and register == instA.classical_reg:
+                    break
+                elif (
+                    isinstance(
+                        instA,
+                        (
+                            LogicalBinaryOp,
+                            ArithmeticBinaryOp,
+                            ClassicalMove,
+                            ClassicalExchange,
+                            ClassicalConvert,
+                        ),
+                    )
+                    and register == instA.right
+                ):
+                    edges.append(((indexA, register), (indexB, register)))
+                elif isinstance(
+                    instA, (ClassicalLoad, ClassicalStore, ClassicalComparison)
+                ) and register in (instA.right, instA.left):
+                    edges.append(((indexA, register), (indexB, register)))
+
+        return nx.DiGraph(edges)
 
     def get_control_flow_bits(self) -> Set[MemoryReference]:
         """
@@ -200,6 +270,7 @@ def is_fallthrough_instruction(inst: AbstractInstruction) -> bool:
             ArithmeticBinaryOp,
             ClassicalExchange,
             ClassicalConvert,
+            ClassicalMove,
             ClassicalLoad,
             ClassicalStore,
             ClassicalComparison,
