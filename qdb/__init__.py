@@ -53,6 +53,22 @@ class Qdb(pdb.Pdb):
 
     do_ent = do_entanglement
 
+    def recreate_wavefunction(self, rho_est: np.ndarray, epsilon: float = 1e-2) -> None:
+        # Determine eigenvals and eigenvectors of density function
+        vals, vecs = np.linalg.eig(rho_est)
+        dim = np.log2(len(rho_est))
+        format_spec = f"0{int(dim)}b"
+        for eigenval, eigenvector in zip(np.real(vals), vecs.T):
+            if eigenval > epsilon:
+                psi = " + ".join(
+                    [
+                        f"{np.round(a, 4)} |{format(i, format_spec)}>"
+                        for i, a in enumerate(eigenvector)
+                        if np.linalg.norm(a) > epsilon
+                    ]
+                )
+                self.message(f"prob={np.round(eigenval, 4)}, \u03a8 = {psi}")
+
     def do_tomography(self, arg: str) -> None:
         """tom(ography) [qubit_index [qubit_index...]]
         Runs state tomography on the qubits specified by the space-separated
@@ -90,6 +106,7 @@ class Qdb(pdb.Pdb):
         rho_est = linear_inv_state_estimate(results, qubits)
         self.message(np.round(rho_est, 4))
         self.message("Purity: {}".format(np.trace(np.matmul(rho_est, rho_est))))
+        self.recreate_wavefunction(rho_est)
 
     do_tom = do_tomography
 
