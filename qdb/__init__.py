@@ -110,6 +110,12 @@ class Qdb(pdb.Pdb):
 
     do_tom = do_tomography
 
+    def do_draw_control_flow_graph(self, arg: str) -> None:
+        """Draws the control flow graph"""
+        QuilControlFlowGraph(self.program).draw()
+
+    do_cfg = do_draw_control_flow_graph
+
 
 def set_trace(qc: QuantumComputer, program: Program, header=None):
     qdb = Qdb(qc, program)

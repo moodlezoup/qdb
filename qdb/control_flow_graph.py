@@ -41,16 +41,17 @@ class QuilBlock(NamedTuple):
         A list of control flow instruction at the end of this basic block
     """
 
+    id: int
     start_index: int
     body: List[AbstractInstruction]
     out_edges: List[AbstractInstruction]
 
     def __repr__(self) -> str:
+        block_name = "Block " + str(self.id)
         inst_strs = [str(inst) for inst in self.body + self.out_edges]
-        width = max([len(inst_str) for inst_str in inst_strs])
-        pretty = "\n+-" + "-" * width + "-+\n"
-        for inst_str in inst_strs:
-            pretty += "| " + inst_str.ljust(width) + " |\n"
+        width = max([len(inst_str) for inst_str in inst_strs] + [len(block_name)])
+        pretty = "\n+-" + block_name.center(width, "-") + "-+\n"
+        pretty += "".join(["| " + s.ljust(width) + " |\n" for s in inst_strs])
         pretty += "+-" + "-" * width + "-+"
         return pretty
 
@@ -120,6 +121,19 @@ class QuilControlFlowGraph(nx.DiGraph):
 
     __str__ = __repr__
 
+    def draw(self) -> None:
+        """Draw the control flow graph in pyplot"""
+        from matplotlib import pyplot as plt
+
+        # TODO: Make graph more readable
+        nx.draw(
+            self,
+            labels=dict(enumerate(self.blocks)),
+            font_family="monospace",
+            node_color="w",
+        )
+        plt.show()
+
     def _build_cfg(self) -> None:
         """Constructs the control flow graph for the program."""
 
@@ -130,7 +144,9 @@ class QuilControlFlowGraph(nx.DiGraph):
         for idx, inst in enumerate(self.program):
             if isinstance(inst, JumpTarget):
                 if body:
-                    self.blocks.append(QuilBlock(start_index, body, []))
+                    self.blocks.append(
+                        QuilBlock(len(self.blocks), start_index, body, [])
+                    )
                 # Next block is the jump target
                 body = [inst]
                 start_index = idx
@@ -140,7 +156,9 @@ class QuilControlFlowGraph(nx.DiGraph):
             # we want to treat this as multiple out-edges from a single node.
             elif isinstance(inst, (Jump, JumpConditional, Halt)):
                 if body:
-                    self.blocks.append(QuilBlock(start_index, body, []))
+                    self.blocks.append(
+                        QuilBlock(len(self.blocks), start_index, body, [])
+                    )
                     body = []
                     start_index = idx + 1
                 self.blocks[-1].out_edges.append(inst)
@@ -151,7 +169,7 @@ class QuilControlFlowGraph(nx.DiGraph):
                 raise ValueError(f"Unhandled instruction type {type(inst)} for {inst}")
 
         if body:
-            self.blocks.append(QuilBlock(start_index, body, []))
+            self.blocks.append(QuilBlock(len(self.blocks), start_index, body, []))
 
         assert len(self.program) == sum(
             len(b.body) + len(b.out_edges) for b in self.blocks
