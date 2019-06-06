@@ -53,7 +53,9 @@ class Qdb(pdb.Pdb):
 
     do_ent = do_entanglement
 
-    def recreate_wavefunction(self, rho_est: np.ndarray, epsilon: float = 1e-2) -> None:
+    def recreate_wavefunction(
+        self, rho_est: np.ndarray, epsilon: float = 1e-2, precision: int = 2
+    ) -> None:
         # Determine eigenvals and eigenvectors of density function
         vals, vecs = np.linalg.eig(rho_est)
         dim = np.log2(len(rho_est))
@@ -62,12 +64,12 @@ class Qdb(pdb.Pdb):
             if eigenval > epsilon:
                 psi = " + ".join(
                     [
-                        f"{np.round(a, 4)} |{format(i, format_spec)}>"
+                        f"{np.round(a, precision)} |{format(i, format_spec)}>"
                         for i, a in enumerate(eigenvector)
                         if np.linalg.norm(a) > epsilon
                     ]
                 )
-                self.message(f"prob={np.round(eigenval, 4)}, \u03a8 = {psi}")
+                self.message(f"prob={np.round(eigenval, precision)}, \u03a8 = {psi}")
 
     def do_tomography(self, arg: str) -> None:
         """tom(ography) [qubit_index [qubit_index...]]
