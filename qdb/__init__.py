@@ -112,6 +112,9 @@ class Qdb(pdb.Pdb):
 
     do_tom = do_tomography
 
+    def do_print_quil(self, arg: str) -> None:
+        self.message(self.program)
+
 
 def set_trace(qc: QuantumComputer, program: Program, header=None):
     qdb = Qdb(qc, program)
