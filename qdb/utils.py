@@ -2,7 +2,8 @@ from typing import List, Set
 import networkx as nx
 import itertools
 from pyquil import Program
-from pyquil.quilbase import Gate
+from pyquil.quilbase import Gate, JumpTarget, Jump
+from pyquil.quilatom import Label
 
 from qdb.control_flow_graph import QuilControlFlowGraph
 
@@ -69,3 +70,40 @@ def trim_program(pq: Program, qubits: List[int]) -> Program:
     )
     # TODO: Try to remove unused basic blocks and repeat until convergence
     return trimmed_program
+
+
+def force_execution_path(
+    pq: Program, cfg: QuilControlFlowGraph, path: List[int]
+) -> Program:
+    """
+    Force a program to take an execution path by replacing other blocks with the
+    instructions `RESET` and `JUMP @START`
+    """
+    assert nx.is_simple_path(cfg, path), f"{path} is not a simple path"
+    assert path[0] == 0, f"{path} does not start at zero"
+    assert path[-1] == len(cfg.blocks) - 1, f"{path} does not end at breakpoint"
+
+    unused_block_length = dict(
+        [
+            (b.start_index, len(b.body))
+            for i, b in enumerate(cfg.blocks)
+            if i not in path
+        ]
+    )
+    # FIXME: Can't use LabelPlaceholder because that messes up label numbers for testing
+    label_start = Label("START-BRANCH-REWIRE")
+    rewired_pq = Program(JumpTarget(label_start))
+    i = 0
+    while i < len(pq):
+        inst = pq[i]
+        if i in unused_block_length:
+            if isinstance(inst, JumpTarget):
+                rewired_pq += inst
+            rewired_pq.reset()
+            rewired_pq += Jump(label_start)
+            i += unused_block_length[i]
+        else:
+            rewired_pq += inst
+            i += 1
+
+    return rewired_pq
